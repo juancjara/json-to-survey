@@ -9,11 +9,8 @@ var copyAttrs = function() {
     Object.keys(other).forEach(function(k) {
       to[k] = other[k];
     });
-    // for (k in other) {
-    //   to[k] = other[k];
-    // }  
   });
-}
+};
 
 var main;
 
@@ -69,6 +66,7 @@ var builder = (function() {
   var createOption = function(data, id, name, type) {
     id = '' + id;
     var parentDiv = createSimpleDiv();
+    //parameters same identation as parenthesis
     parentDiv.appendChild(
       createGenericTag('label', {textContent: data.label, htmlFor: id}, {}));
     parentDiv.appendChild(createGenericTag('input', data, 
@@ -114,6 +112,10 @@ var evaluateCondition = function(cond, a, b) {
   }
 };
 
+var isOptionType = function(type) {
+  return type === 'radio' || type === 'checkbox';
+}
+
 var FakeElement = function(question, data) {
   this.question = question;
   this.tag = data.tag;
@@ -121,7 +123,7 @@ var FakeElement = function(question, data) {
   this.skip = data.skip;
   this.valuefields = question.childNodes[1];
 
-  if (this.tag === 'radio' || this.tag === 'checkbox') {
+  if (isOptionType(this.tag)) {
 
     this.valuefields =  [].map
       .call(this.valuefields.childNodes, 
@@ -151,7 +153,7 @@ FakeElement.prototype = {
 
       var isRequired;
 
-      if (this.tag === 'radio' || this.tag === 'checkbox') {
+      if (isOptionType(this.tag)) {
         isRequired: false
       } else {
         isRequired = !evaluateCondition(this.skip.cond, this.skip.val, 
@@ -179,7 +181,7 @@ FakeElement.prototype = {
     this.question.classList.add('error');
     return true; 
   }
-}
+};
 
 var createBody = function(body) {
   body.forEach(function(el) {
@@ -187,7 +189,7 @@ var createBody = function(body) {
     elems[id++] = new FakeElement(newElement, el);
     main.appendChild(newElement);
   })
-}
+};
 
 //pass keys , and create variable to store keys
 var evaluateFields = function(fields) {
@@ -202,7 +204,7 @@ var evaluateFields = function(fields) {
     });
     
   });
-}
+;
 
 var extractValues = function(fields) {
   return Object.keys(fields).map(function(k) {
@@ -236,7 +238,7 @@ var init = function(formId, schema) {
 
   main.appendChild(
     builder.createElement('button', {textContent: 'submit'}));
-}
+};
 
 var schema = {
   body: [
@@ -259,7 +261,7 @@ var schema = {
       {'value': '6', 'label': 'option 6'}
     ]}
   ]
-}
+};
 
 init('main', schema);
 setInterval(function() {evaluateFields(elems)} , 500);

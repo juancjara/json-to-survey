@@ -1,4 +1,4 @@
-var elems = {};
+var domElements = {};
 var id = 0;
 
 var copyAttrs = function() {
@@ -12,7 +12,13 @@ var copyAttrs = function() {
   });
 };
 
-var main;
+var values = function(dic) {
+  return Object.keys(dic).map(function(k) {return dic[k]});
+};
+
+var flatten = function(arr) {
+  return arr.reduce(function(a, b) {return a.concat(b)}, []);
+};
 
 var builder = (function() {
 
@@ -23,10 +29,11 @@ var builder = (function() {
   };
 
   var createQuestion = function(data, id) {
-    id = '' + id;//outside?
-    var question = createGenericTag('div', {className: 'question'} , {});
-    question.appendChild(
-      createGenericTag('label', {textContent: data.label, htmlFor: id}), {});
+    id = '' + id;
+    var question = createGenericTag('div', {className: 'question'});
+    question.appendChild(createGenericTag('label', 
+                                          {textContent: data.label,
+                                            htmlFor: id}));
     data.id = id;
     if (data.tag in actions) {
       question.appendChild(actions[data.tag](data));
@@ -35,24 +42,23 @@ var builder = (function() {
   };
 
   var createGenericTag = function(tag, attrs, defaultAttrs) {
-    // if (!defaultAttrs) defaultAttrs = {};
     defaultAttrs = defaultAttrs || {};
     var elem = document.createElement(tag);
     copyAttrs(elem, defaultAttrs, attrs);
     return elem;
-  }
+  };
 
   var createInput = function(attrs) {
     return createGenericTag('input', attrs, {type: 'text'});
   };
 
   var createTextArea = function(attrs) {
-    return createGenericTag('textarea', attrs, {});
+    return createGenericTag('textarea', attrs);
   };
 
   var createSimpleDiv = function() {
-    return createGenericTag('div', {}, {});
-  }
+    return createGenericTag('div', {});
+  };
 
   var createOptions = function(attrs) {
     var parentDiv = createSimpleDiv();
@@ -61,25 +67,26 @@ var builder = (function() {
     });
 
     return parentDiv;
-  }
+  };
 
   var createOption = function(data, id, name, type) {
     id = '' + id;
     var parentDiv = createSimpleDiv();
-    //parameters same identation as parenthesis
-    parentDiv.appendChild(
-      createGenericTag('label', {textContent: data.label, htmlFor: id}, {}));
+
+    parentDiv.appendChild(createGenericTag('label', 
+                                           {textContent: data.label,
+                                            htmlFor: id}));
     parentDiv.appendChild(createGenericTag('input', data, 
-                                          {type: type, name: name}));
+                                           {type: type, name: name}));
     return parentDiv;
-  }
+  };
   
   var createButton = function(attrs) {
-    return createGenericTag('button', attrs, {});
+    return createGenericTag('button', attrs);
   };
 
   var createLabel = function(attrs) {
-    return createGenericTag('label', attrs, {});
+    return createGenericTag('label', attrs);
   };
   
   var actions = {
@@ -95,7 +102,7 @@ var builder = (function() {
     if (type in actions) {
       return actions[type](data); 
     }
-  }
+  };
 
   return {
     createElement: createElement,
@@ -120,6 +127,7 @@ var FakeElement = function(question, data) {
   this.question = question;
   this.tag = data.tag;
   this.req = data.req || true;
+  this.inititalRequired = this.req;
   this.skip = data.skip;
   this.valuefields = question.childNodes[1];
 
@@ -134,7 +142,8 @@ var FakeElement = function(question, data) {
 };
 
 FakeElement.prototype = {
-  val : function() {
+
+  val: function() {
     if (Array.isArray(this.valuefields)) {
       return this.valuefields
         .filter(function(e) {return e.checked})
@@ -147,31 +156,44 @@ FakeElement.prototype = {
     return this.val().length > 0;
   },
 
-  getSkipQuestions: function() {
-    //doing to things
-    if (this.skip) {
+  questionsToSkip: function() {
 
-      var isRequired;
+    if (this.question.classList.contains('error')) {
 
-      if (isOptionType(this.tag)) {
-        isRequired: false
-      } else {
-        isRequired = !evaluateCondition(this.skip.cond, this.skip.val, 
-                                        this.val())
-      }
-
-      return {
-         isRequired: isRequired,
-         targets: this.skip.to
+      this.question.classList.remove('error');
+      if (this.req && !this.hasValue()) {
+        this.question.classList.add('error');
       }
     }
-    return {targets: []};
+
+    if (this.skip){
+      var skips = [].concat(this.skip);
+      var valuesFromFields = [].concat(this.val());
+
+      var groupsQuestionsToSkip = skips.filter(function(skip) {
+          return valuesFromFields.filter(function(val) {
+            return evaluateCondition(skip.cond, skip.val, val);
+          }).length > 0;
+        }).map(function(m) {return m.questions});
+
+      return flatten(groupsQuestionsToSkip);
+    }
+    return [];
+  },
+
+  resetReq: function() {
+    this.setReq(this.inititalRequired);
   },
 
   setReq: function(required) {
     if (!required) {
       this.question.classList.remove('error');
+      //this.question.style.display = 'none';
+    } else {
+      //this.question.style.display = 'block';
+      //console.log();
     }
+
     this.req = required;
   },
 
@@ -183,85 +205,82 @@ FakeElement.prototype = {
   }
 };
 
-var createBody = function(body) {
+var createBody = function(domElements, body, mainElement) {
   body.forEach(function(el) {
     var newElement = builder.createQuestion(el, id);
-    elems[id++] = new FakeElement(newElement, el);
-    main.appendChild(newElement);
+    domElements[id++] = new FakeElement(newElement, el);
+    mainElement.appendChild(newElement);
   })
 };
 
-//pass keys , and create variable to store keys
-var evaluateFields = function(fields) {
-  Object.keys(fields).forEach(function(k) {
+var evaluateFakeElements = function(fakeElements) {
 
-    var res = fields[k].getSkipQuestions();
+  values(fakeElements).forEach(function(elem) {
+    elem.resetReq(true);
+  })
 
-    res.targets.map(function(idx) {
-      if (idx in fields) {
-        fields[idx].setReq(res.isRequired);
-      }
-    });
+  values(fakeElements).forEach(function(elem) {
+
+    elem.questionsToSkip()
+      .map(function(idx) {
+        if (idx in fakeElements) {
+          fakeElements[idx].setReq(false);
+        }
+      });
     
-  });
-;
-
-var extractValues = function(fields) {
-  return Object.keys(fields).map(function(k) {
-    return elems[k].val();
-  })
-};
-
-var extractErrors = function(fields) {
-  return Object.keys(fields).map(function(k) {
-    return fields[k].getError();
-  });
+  });  
 };
 
 var init = function(formId, schema) {
-  main = document.getElementById('main');
+  var main = document.getElementById('main');
   var options = {};
   options.onSubmit = schema.onSubmit;
   
   main.addEventListener('submit', function(e) {
     e.preventDefault();
-    var values = extractValues(elems);
-    var errors = extractErrors(elems);
-    console.log(values);
+    var elemValues = values(domElements).map(function(k) {return k.val();});
+    var errors = values(domElements).map(function(k) {return k.getError();});
+
+    console.log(elemValues);
     console.log(errors);
+
     if (options.onSubmit) {
-      options.onSubmit(errors, values);
+      options.onSubmit(errors, elemValues);
     }
   });
 
-  createBody(schema.body);
-
-  main.appendChild(
-    builder.createElement('button', {textContent: 'submit'}));
+  createBody(domElements, schema.body, main);
+  main.appendChild(builder.createElement('button', {textContent: 'submit'}));
 };
 
 var schema = {
   body: [
-    {label: '1 qs', tag: 'input', type: 'text', 
-      skip: {
-        cond: '=',
-        val: 'yes',
-        to: [1, 2]
-      }
-    }, 
+    {label: '1 qs', tag: 'input', type: 'text'}, 
+
     {label: '2 qs', tag: 'textarea', placeholder: 'pl'},
-    {label: '3 qs', tag: 'radio', data : [ 
+
+    {label: '3 qs', tag: 'radio', 
+     data : [ 
       {'value': '1', 'label': 'option 1'},
       {'value': '2', 'label': 'option 2'},
       {'value': '3', 'label': 'option 3'}
-    ]},
+     ],
+     skip: [
+      {val: '1', cond: '=', questions: [0]},
+      {val: '2', cond: '=', questions: [1]},
+      {val: '3', cond: '=', questions: [4]}
+     ]
+    },
     {label: '4 qs', tag: 'checkbox', data : [ 
       {'value': '4', 'label': 'option 4'},
       {'value': '5', 'label': 'option 5'},
       {'value': '6', 'label': 'option 6'}
-    ]}
+    ]},
+    {label: '5 qs', tag: 'textarea', placeholder: 'pl'}
   ]
 };
 
 init('main', schema);
-setInterval(function() {evaluateFields(elems)} , 500);
+
+setInterval(function() {evaluateFakeElements(domElements)} , 200);
+

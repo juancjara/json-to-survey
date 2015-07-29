@@ -17,11 +17,18 @@ var flatten = function(arr) {
   return arr.reduce(function(a, b) {return a.concat(b)}, []);
 };
 
-var builder = (function() {
+var evaluateCondition = function(cond, a, b) {
+  if (cond === '=') {
+    return a === b;
+  }
+  if (cond === '<>') {
+    return a !== b;
+  }
+  throw 'Condition not found ' + cond;
+};
 
-  var defaultInputAttrs = {
-    type: 'text'
-  };
+
+var builder = (function() {
 
   var createQuestion = function(data, id) {
     id = '' + id;
@@ -119,16 +126,8 @@ var builder = (function() {
     createQuestion: createQuestion,
     createTitle: createTitle
   };
-})();
 
-var evaluateCondition = function(cond, a, b) {
-  if (cond === '=') {
-    return a === b;
-  }
-  if (cond === '<>') {
-    return a !== b;
-  }
-};
+})();
 
 var isOptionType = function(type) {
   return type === 'radio' || type === 'checkbox';

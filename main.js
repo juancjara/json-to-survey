@@ -75,14 +75,14 @@ var Survey = function() {
     var createOptions = function(attrs) {
       var parentDiv = createSimpleDiv();
       attrs.data.forEach(function(e, idx) {
-        parentDiv.appendChild(createOption(e, attrs.id + '' + idx,
-                                           attrs.id, attrs.tag));
+        parentDiv.appendChild(createSingleOption(e, attrs.id + '' + idx,
+                                                 attrs.id, attrs.tag));
       });
 
       return parentDiv;
     };
 
-    var createOption = function(data, id, name, type) {
+    var createSingleOption = function(data, id, name, type) {
       var parentDiv = createSimpleDiv({className: 'elem-radio-check'});
 
       parentDiv.appendChild(createGenericTag('input', data, 
@@ -285,9 +285,9 @@ var Survey = function() {
       sheet.insertRule('.l-not-req { display: none; }', sheet.cssRules.length);
     }
 
-    //submitButton array, maybe in the future it can be many buttons
     mainElement.appendChild(builder.createTitle(schema.title));
 
+    //submitButton array, maybe in the future it can be many buttons
     var formElement = createBody(domElements, schema.body,
                                  [schema.submitButton]);
     mainElement.appendChild(formElement);

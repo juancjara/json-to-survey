@@ -1,23 +1,15 @@
 <html>
 <head>
   <title></title>
-  <style>
-    .error >label {
-      color: red;
-    }
-
-  </style>
   <link rel="stylesheet" type="text/css" href="main.css">
 </head>
 <body>
   <div id="main" class = 'form'></div>
   <script src='main.js'></script>
   <script type="text/javascript">
-  
   var doSomething = function(err, values) {
     console.log(err, values);
   };
-
   var schema = {
     options: {
       hideNotReq: true
@@ -37,9 +29,7 @@
           questions: [1, 2]
         }
       },
-
       {label: '2. Second question', tag: 'textarea', placeholder: 'fill this'},
-
       {label: '3. Another question', tag: 'radio', 
        data : [ 
         {'value': '1', 'label': 'option 1'},
@@ -61,7 +51,7 @@
     ]
   };
 
-  init(document.getElementById('main'), schema);
+  new Survey().create(document.getElementById('main'), schema);
   </script>
 </body>
 </html>

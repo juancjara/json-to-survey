@@ -1,0 +1,27 @@
+{
+  "name": "json-to-survey",
+  "version": "0.2.0",
+  "description": "Easy way to build a survey from a json",
+  "main": "main.js",
+  "scripts": {
+    "build": "uglifyjs main.js -o jsonToSurvey.min.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/juancjara/json-to-survey.git"
+  },
+  "keywords": [
+    "json",
+    "survey",
+    "form"
+  ],
+  "author": "jcj",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/juancjara/json-to-survey/issues"
+  },
+  "dependencies": {
+    "uglify-js": "~2.4.24"
+  }
+}

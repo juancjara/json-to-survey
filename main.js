@@ -1,4 +1,4 @@
-var survey = function() {
+var Survey = function() {
   var copyAttrs = function() {
     var to = arguments[0];
     var from = [].splice.call(arguments, 1);

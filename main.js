@@ -23,8 +23,6 @@ var flatten = function(arr) {
 var builder = (function() {
 
   var defaultInputAttrs = {
-    className: '',
-    placeholder: '',
     type: 'text'
   };
 
@@ -33,8 +31,13 @@ var builder = (function() {
     var question = createGenericTag('div', {className: 'question'});
     question.appendChild(createGenericTag('label', 
                                           {textContent: data.label,
-                                            htmlFor: id}));
+                                            htmlFor: id,
+                                            className: 'q-title'}));
     data.id = id;
+    if (!data.className) {
+      data.className = '';
+    }
+    data.className +=' q-answer'
     if (data.tag in actions) {
       question.appendChild(actions[data.tag](data));
     }
@@ -56,8 +59,9 @@ var builder = (function() {
     return createGenericTag('textarea', attrs);
   };
 
-  var createSimpleDiv = function() {
-    return createGenericTag('div', {});
+  var createSimpleDiv = function(attr) {
+    attr = attr || {};
+    return createGenericTag('div', attr);
   };
 
   var createOptions = function(attrs) {
@@ -71,17 +75,19 @@ var builder = (function() {
 
   var createOption = function(data, id, name, type) {
     id = '' + id;
-    var parentDiv = createSimpleDiv();
+    var parentDiv = createSimpleDiv({className: 'elem-radio-check'});
 
+    parentDiv.appendChild(createGenericTag('input', data, 
+                                           {type: type, name: name}));
     parentDiv.appendChild(createGenericTag('label', 
                                            {textContent: data.label,
                                             htmlFor: id}));
-    parentDiv.appendChild(createGenericTag('input', data, 
-                                           {type: type, name: name}));
     return parentDiv;
   };
   
   var createButton = function(attrs) {
+    attrs = attrs || {};
+    attrs.textContent = attrs.label || 'addname';
     return createGenericTag('button', attrs);
   };
 
@@ -98,15 +104,23 @@ var builder = (function() {
     'checkbox': createOptions
   };
   
+  var createTitle = function(attrs) {
+    var tag = attrs.tag || 'div';
+    attrs.textContent = attrs.label;
+    return createGenericTag(tag, attrs);
+  };
+
   var createElement = function(type, data) {
     if (type in actions) {
       return actions[type](data); 
     }
+    return createGenericTag(type, data);
   };
 
   return {
     createElement: createElement,
-    createQuestion: createQuestion
+    createQuestion: createQuestion,
+    createTitle: createTitle
   };
 })();
 
@@ -126,8 +140,8 @@ var isOptionType = function(type) {
 var FakeElement = function(question, data) {
   this.question = question;
   this.tag = data.tag;
-  this.req = data.req || true;
-  this.inititalRequired = this.req;
+  this.req;
+  
   this.skip = data.skip;
   this.valuefields = question.childNodes[1];
 
@@ -139,6 +153,13 @@ var FakeElement = function(question, data) {
               return c.childNodes[1];
             });
   }
+
+  if (data.req === undefined || data.req === null) {
+    this.setReq(true);  
+  } else {
+    this.setReq(data.req);
+  }
+  this.inititalRequired = this.req;
 };
 
 FakeElement.prototype = {
@@ -188,10 +209,9 @@ FakeElement.prototype = {
   setReq: function(required) {
     if (!required) {
       this.question.classList.remove('error');
-      //this.question.style.display = 'none';
+      this.question.classList.add('l-not-req');
     } else {
-      //this.question.style.display = 'block';
-      //console.log();
+      this.question.classList.remove('l-not-req');
     }
 
     this.req = required;
@@ -205,18 +225,26 @@ FakeElement.prototype = {
   }
 };
 
-var createBody = function(domElements, body, mainElement) {
-  body.forEach(function(el) {
+var createBody = function(domElements, questions, actionButtons) {
+  var form = builder.createElement('form', {});
+  
+  questions.forEach(function(el) {
     var newElement = builder.createQuestion(el, id);
     domElements[id++] = new FakeElement(newElement, el);
-    mainElement.appendChild(newElement);
+    form.appendChild(newElement);
   })
+
+  actionButtons.forEach(function(btnAttr) {
+    form.appendChild(builder.createElement('button', btnAttr));
+  });
+
+  return form;
 };
 
 var evaluateFakeElements = function(fakeElements) {
 
   values(fakeElements).forEach(function(elem) {
-    elem.resetReq(true);
+    elem.resetReq();
   })
 
   values(fakeElements).forEach(function(elem) {
@@ -231,56 +259,37 @@ var evaluateFakeElements = function(fakeElements) {
   });  
 };
 
+var sheet = (function() {
+  var style = document.createElement("style");
+  style.appendChild(document.createTextNode(""));
+  document.head.appendChild(style);
+  return style.sheet;
+})();
+
 var init = function(formId, schema) {
+  
   var main = document.getElementById('main');
-  var options = {};
-  options.onSubmit = schema.onSubmit;
+  var options = schema.options || {};
+  
+  if (options.hideNotReq) {
+    sheet.insertRule('.l-not-req { display: none; }', sheet.cssRules.length);
+  }
+
+  var onSubmit = schema.onSubmit;
   
   main.addEventListener('submit', function(e) {
     e.preventDefault();
     var elemValues = values(domElements).map(function(k) {return k.val();});
     var errors = values(domElements).map(function(k) {return k.getError();});
-
-    console.log(elemValues);
-    console.log(errors);
-
+    //filter errors
     if (options.onSubmit) {
       options.onSubmit(errors, elemValues);
     }
   });
+  //submitButton array, maybe in the future it can be many buttons
+  main.appendChild(builder.createTitle(schema.title));
+  main.appendChild(createBody(domElements, schema.body, [schema.submitButton]));
 
-  createBody(domElements, schema.body, main);
-  main.appendChild(builder.createElement('button', {textContent: 'submit'}));
+  setInterval(function() {evaluateFakeElements(domElements)} , 200);
 };
-
-var schema = {
-  body: [
-    {label: '1 qs', tag: 'input', type: 'text'}, 
-
-    {label: '2 qs', tag: 'textarea', placeholder: 'pl'},
-
-    {label: '3 qs', tag: 'radio', 
-     data : [ 
-      {'value': '1', 'label': 'option 1'},
-      {'value': '2', 'label': 'option 2'},
-      {'value': '3', 'label': 'option 3'}
-     ],
-     skip: [
-      {val: '1', cond: '=', questions: [0]},
-      {val: '2', cond: '=', questions: [1]},
-      {val: '3', cond: '=', questions: [4]}
-     ]
-    },
-    {label: '4 qs', tag: 'checkbox', data : [ 
-      {'value': '4', 'label': 'option 4'},
-      {'value': '5', 'label': 'option 5'},
-      {'value': '6', 'label': 'option 6'}
-    ]},
-    {label: '5 qs', tag: 'textarea', placeholder: 'pl'}
-  ]
-};
-
-init('main', schema);
-
-setInterval(function() {evaluateFakeElements(domElements)} , 200);
 

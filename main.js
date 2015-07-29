@@ -1,6 +1,3 @@
-var domElements = {};
-var id = 0;
-
 var copyAttrs = function() {
   var to = arguments[0];
   var from = [].splice.call(arguments, 1);
@@ -227,7 +224,8 @@ FakeElement.prototype = {
 
 var createBody = function(domElements, questions, actionButtons) {
   var form = builder.createElement('form', {});
-  
+  var id = 0;
+
   questions.forEach(function(el) {
     var newElement = builder.createQuestion(el, id);
     domElements[id++] = new FakeElement(newElement, el);
@@ -266,30 +264,29 @@ var sheet = (function() {
   return style.sheet;
 })();
 
-var init = function(formId, schema) {
-  
-  var main = document.getElementById('main');
+var init = function(mainElement, schema) {
+  var domElements = {};  
   var options = schema.options || {};
   
   if (options.hideNotReq) {
     sheet.insertRule('.l-not-req { display: none; }', sheet.cssRules.length);
   }
-
-  var onSubmit = schema.onSubmit;
   
-  main.addEventListener('submit', function(e) {
+  var onSubmit = schema.onSubmit || function() {};
+
+  //submitButton array, maybe in the future it can be many buttons
+  mainElement.appendChild(builder.createTitle(schema.title));
+  var formElement = createBody(domElements, schema.body, [schema.submitButton]);
+
+  formElement.addEventListener('submit', function(e) {
     e.preventDefault();
     var elemValues = values(domElements).map(function(k) {return k.val();});
     var errors = values(domElements).map(function(k) {return k.getError();});
     //filter errors
-    if (options.onSubmit) {
-      options.onSubmit(errors, elemValues);
-    }
+    onSubmit(errors, elemValues);
   });
-  //submitButton array, maybe in the future it can be many buttons
-  main.appendChild(builder.createTitle(schema.title));
-  main.appendChild(createBody(domElements, schema.body, [schema.submitButton]));
 
+  mainElement.appendChild(formElement);
   setInterval(function() {evaluateFakeElements(domElements)} , 200);
 };
 

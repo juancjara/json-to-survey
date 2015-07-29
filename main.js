@@ -27,6 +27,9 @@ var evaluateCondition = function(cond, a, b) {
   throw 'Condition not found ' + cond;
 };
 
+var triggerEvent = function(name) {
+  window.dispatchEvent(new Event(name));
+};
 
 var builder = (function() {
 
@@ -71,18 +74,18 @@ var builder = (function() {
   var createOptions = function(attrs) {
     var parentDiv = createSimpleDiv();
     attrs.data.forEach(function(e, idx) {
-      parentDiv.appendChild(createOption(e, idx, attrs.id, attrs.tag));
+      parentDiv.appendChild(createOption(e, attrs.id + '' + idx,
+                                         attrs.id, attrs.tag));
     });
 
     return parentDiv;
   };
 
   var createOption = function(data, id, name, type) {
-    id = '' + id;
     var parentDiv = createSimpleDiv({className: 'elem-radio-check'});
 
     parentDiv.appendChild(createGenericTag('input', data, 
-                                           {type: type, name: name}));
+                                           {type: type, name: name, id: id}));
     parentDiv.appendChild(createGenericTag('label', 
                                            {textContent: data.label,
                                             htmlFor: id}));
@@ -131,7 +134,11 @@ var builder = (function() {
 
 var isOptionType = function(type) {
   return type === 'radio' || type === 'checkbox';
-}
+};
+
+var triggerUpdate = function() {
+  triggerEvent('updateElementsValue');
+};
 
 var FakeElement = function(question, data) {
   this.question = question;
@@ -142,12 +149,16 @@ var FakeElement = function(question, data) {
   this.valuefields = question.childNodes[1];
 
   if (isOptionType(this.tag)) {
+    this.valuefields.addEventListener('click', triggerUpdate);
 
     this.valuefields =  [].map
       .call(this.valuefields.childNodes, 
             function(c) {
-              return c.childNodes[1];
+              return c.childNodes[0];
             });
+
+  } else {
+    this.valuefields.addEventListener('keyup', triggerUpdate);
   }
 
   if (data.req === undefined || data.req === null) {
@@ -162,6 +173,7 @@ FakeElement.prototype = {
 
   val: function() {
     if (Array.isArray(this.valuefields)) {
+      
       return this.valuefields
         .filter(function(e) {return e.checked})
         .map(function(e) {return e.value});  
@@ -183,11 +195,12 @@ FakeElement.prototype = {
       }
     }
 
-    if (this.skip){
+    if (this.skip) {
       var skips = [].concat(this.skip);
       var valuesFromFields = [].concat(this.val());
 
-      var groupsQuestionsToSkip = skips.filter(function(skip) {
+      var groupsQuestionsToSkip = skips
+        .filter(function(skip) {
           return valuesFromFields.filter(function(val) {
             return evaluateCondition(skip.cond, skip.val, val);
           }).length > 0;
@@ -247,7 +260,7 @@ var evaluateFakeElements = function(fakeElements) {
   values(fakeElements).forEach(function(elem) {
 
     elem.questionsToSkip()
-      .map(function(idx) {
+      .forEach(function(idx) {
         if (idx in fakeElements) {
           fakeElements[idx].setReq(false);
         }
@@ -255,6 +268,7 @@ var evaluateFakeElements = function(fakeElements) {
     
   });  
 };
+
 
 var sheet = (function() {
   var style = document.createElement("style");
@@ -266,26 +280,28 @@ var sheet = (function() {
 var init = function(mainElement, schema) {
   var domElements = {};  
   var options = schema.options || {};
-  
+  var onSubmit = schema.onSubmit || function() {};
+
   if (options.hideNotReq) {
     sheet.insertRule('.l-not-req { display: none; }', sheet.cssRules.length);
   }
-  
-  var onSubmit = schema.onSubmit || function() {};
 
   //submitButton array, maybe in the future it can be many buttons
   mainElement.appendChild(builder.createTitle(schema.title));
+
   var formElement = createBody(domElements, schema.body, [schema.submitButton]);
+  mainElement.appendChild(formElement);
 
   formElement.addEventListener('submit', function(e) {
     e.preventDefault();
     var elemValues = values(domElements).map(function(k) {return k.val();});
     var errors = values(domElements).map(function(k) {return k.getError();});
-    //filter errors
+    
     onSubmit(errors, elemValues);
   });
 
-  mainElement.appendChild(formElement);
-  setInterval(function() {evaluateFakeElements(domElements)} , 200);
+  window.addEventListener('updateElementsValue', function() {
+    evaluateFakeElements(domElements);
+  });
 };
 

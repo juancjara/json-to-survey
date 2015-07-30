@@ -2,7 +2,7 @@ var Survey = function() {
   var copyAttrs = function() {
     var to = arguments[0];
     var from = [].splice.call(arguments, 1);
-    
+
     from.forEach(function(other) {
       Object.keys(other).forEach(function(k) {
         to[k] = other[k];
@@ -11,20 +11,26 @@ var Survey = function() {
   };
 
   var values = function(dic) {
-    return Object.keys(dic).map(function(k) {return dic[k];});
+    return Object.keys(dic).map(function(k) {
+      return dic[k];
+    });
   };
 
   var flatten = function(arr) {
-    return arr.reduce(function(a, b) {return a.concat(b);}, []);
+    return arr.reduce(function(a, b) {
+      return a.concat(b);
+    }, []);
   };
 
   var evaluateCondition = function(cond, a, b) {
     if (cond === '=') {
       return a === b;
     }
+
     if (cond === '<>') {
       return a !== b;
     }
+
     throw 'Condition not found ' + cond;
   };
 
@@ -33,22 +39,25 @@ var Survey = function() {
   };
 
   var builder = (function() {
-
     var createQuestion = function(data, id) {
-      id = '' + id;
+      data.id = '' + id;
+
       var question = createGenericTag('div', {className: 'question'});
-      question.appendChild(createGenericTag('label', 
+      question.appendChild(createGenericTag('label',
                                             {textContent: data.label,
-                                              htmlFor: id,
-                                              className: 'q-title'}));
-      data.id = id;
+                                             htmlFor: data.id,
+                                             className: 'q-title'}));
+
+
       if (!data.className) {
         data.className = '';
       }
       data.className +=' q-answer';
+
       if (data.tag in actions) {
         question.appendChild(actions[data.tag](data));
       }
+
       return question;
     };
 
@@ -85,14 +94,14 @@ var Survey = function() {
     var createSingleOption = function(data, id, name, type) {
       var parentDiv = createSimpleDiv({className: 'elem-radio-check'});
 
-      parentDiv.appendChild(createGenericTag('input', data, 
+      parentDiv.appendChild(createGenericTag('input', data,
                                              {type: type, name: name, id: id}));
-      parentDiv.appendChild(createGenericTag('label', 
+      parentDiv.appendChild(createGenericTag('label',
                                              {textContent: data.label,
                                               htmlFor: id}));
       return parentDiv;
     };
-    
+
     var createButton = function(attrs) {
       attrs = attrs || {};
       attrs.textContent = attrs.label || 'addname';
@@ -102,16 +111,16 @@ var Survey = function() {
     var createLabel = function(attrs) {
       return createGenericTag('label', attrs);
     };
-    
+
     var actions = {
-      'button': createButton,
-      'input': createInput,
-      'textarea': createTextArea,
-      'label': createLabel,
-      'radio': createOptions,
-      'checkbox': createOptions
+      button: createButton,
+      input: createInput,
+      textarea: createTextArea,
+      label: createLabel,
+      radio: createOptions,
+      checkbox: createOptions
     };
-    
+
     var createTitle = function(attrs) {
       var tag = attrs.tag || 'div';
       attrs.textContent = attrs.label;
@@ -120,7 +129,7 @@ var Survey = function() {
 
     var createElement = function(type, data) {
       if (type in actions) {
-        return actions[type](data); 
+        return actions[type](data);
       }
       return createGenericTag(type, data);
     };
@@ -130,7 +139,6 @@ var Survey = function() {
       createQuestion: createQuestion,
       createTitle: createTitle
     };
-
   })();
 
   var isOptionType = function(type) {
@@ -146,36 +154,38 @@ var Survey = function() {
     this.tag = data.tag;
     this.skip = data.skip;
     this.valuefields = question.childNodes[1];
-    this.req;
+
     if (isOptionType(this.tag)) {
       this.valuefields.addEventListener('click', triggerUpdate);
 
       this.valuefields =  [].map
-        .call(this.valuefields.childNodes, 
+        .call(this.valuefields.childNodes,
               function(c) {
                 return c.childNodes[0];
               });
-
     } else {
       this.valuefields.addEventListener('keyup', triggerUpdate);
     }
 
     if (data.req === undefined || data.req === null) {
-      this.setReq(true);  
+      this.setReq(true);
     } else {
       this.setReq(data.req);
     }
+
     this.inititalRequired = this.req;
   };
 
   FakeElement.prototype = {
-
     val: function() {
       if (Array.isArray(this.valuefields)) {
-        
         return this.valuefields
-          .filter(function(e) {return e.checked;})
-          .map(function(e) {return e.value;});  
+          .filter(function(e) {
+            return e.checked;
+          })
+          .map(function(e) {
+            return e.value;
+          });
       }
       return this.valuefields.value;
     },
@@ -185,10 +195,9 @@ var Survey = function() {
     },
 
     questionsToSkip: function() {
-
       if (this.question.classList.contains('error')) {
-
         this.question.classList.remove('error');
+
         if (this.req && !this.hasValue()) {
           this.question.classList.add('error');
         }
@@ -197,13 +206,12 @@ var Survey = function() {
       if (this.skip) {
         var skips = [].concat(this.skip);
         var valuesFromFields = [].concat(this.val());
-
         var groupsQuestionsToSkip = skips
-          .filter(function(skip) {
-            return valuesFromFields.filter(function(val) {
-              return evaluateCondition(skip.cond, skip.val, val);
-            }).length > 0;
-          }).map(function(m) {return m.questions;});
+              .filter(function(skip) {
+                return valuesFromFields.filter(function(val) {
+                  return evaluateCondition(skip.cond, skip.val, val);
+                }).length > 0;
+              }).map(function(m) {return m.questions;});
 
         return flatten(groupsQuestionsToSkip);
       }
@@ -229,7 +237,7 @@ var Survey = function() {
       this.question.classList.remove('error');
       if (!this.req || this.hasValue()) return false;
       this.question.classList.add('error');
-      return true; 
+      return true;
     }
   };
 
@@ -251,23 +259,19 @@ var Survey = function() {
   };
 
   var evaluateFakeElements = function(fakeElements) {
-
     values(fakeElements).forEach(function(elem) {
       elem.resetReq();
     });
 
     values(fakeElements).forEach(function(elem) {
-
       elem.questionsToSkip()
         .forEach(function(idx) {
           if (idx in fakeElements) {
             fakeElements[idx].setReq(false);
           }
         });
-      
-    });  
+    });
   };
-
 
   var sheet = (function() {
     var style = document.createElement("style");
@@ -277,7 +281,7 @@ var Survey = function() {
   })();
 
   var init = function(mainElement, schema) {
-    var domElements = {};  
+    var domElements = {};
     var options = schema.options || {};
     var onSubmit = schema.onSubmit || function() {};
 
@@ -296,7 +300,7 @@ var Survey = function() {
       e.preventDefault();
       var elemValues = values(domElements).map(function(k) {return k.val();});
       var errors = values(domElements).map(function(k) {return k.getError();});
-      
+
       onSubmit(errors, elemValues);
     });
 
@@ -307,6 +311,5 @@ var Survey = function() {
 
   return {
     create: init
-  }
-
+  };
 };

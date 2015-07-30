@@ -22,18 +22,6 @@ var Survey = function() {
     }, []);
   };
 
-  var evaluateCondition = function(cond, a, b) {
-    if (cond === '=') {
-      return a === b;
-    }
-
-    if (cond === '<>') {
-      return a !== b;
-    }
-
-    throw 'Condition not found ' + cond;
-  };
-
   var triggerEvent = function(name) {
     window.dispatchEvent(new Event(name));
   };
@@ -48,14 +36,10 @@ var Survey = function() {
                                              htmlFor: data.id,
                                              className: 'q-title'}));
 
+      data.className = (data.className || '') + ' q-answer';
 
-      if (!data.className) {
-        data.className = '';
-      }
-      data.className +=' q-answer';
-
-      if (data.tag in actions) {
-        question.appendChild(actions[data.tag](data));
+      if (data.tag in factories) {
+        question.appendChild(factories[data.tag](data));
       }
 
       return question;
@@ -77,8 +61,7 @@ var Survey = function() {
     };
 
     var createSimpleDiv = function(attr) {
-      attr = attr || {};
-      return createGenericTag('div', attr);
+      return createGenericTag('div', attr || {});
     };
 
     var createOptions = function(attrs) {
@@ -112,7 +95,7 @@ var Survey = function() {
       return createGenericTag('label', attrs);
     };
 
-    var actions = {
+    var factories = {
       button: createButton,
       input: createInput,
       textarea: createTextArea,
@@ -128,8 +111,8 @@ var Survey = function() {
     };
 
     var createElement = function(type, data) {
-      if (type in actions) {
-        return actions[type](data);
+      if (type in factories) {
+        return factories[type](data);
       }
       return createGenericTag(type, data);
     };
@@ -156,13 +139,13 @@ var Survey = function() {
     this.valuefields = question.childNodes[1];
 
     if (isOptionType(this.tag)) {
-      this.valuefields.addEventListener('click', triggerUpdate);
-
       this.valuefields =  [].map
         .call(this.valuefields.childNodes,
               function(c) {
                 return c.childNodes[0];
               });
+
+      this.valuefields.addEventListener('click', triggerUpdate);
     } else {
       this.valuefields.addEventListener('keyup', triggerUpdate);
     }
@@ -176,30 +159,25 @@ var Survey = function() {
     this.inititalRequired = this.req;
   };
 
+  var evaluateCondition = function(cond, a, b) {
+    if (cond === '=') {
+      return a === b;
+    } else if (cond === '<>') {
+      return a !== b;
+    }
+
+    throw 'Condition not found ' + cond;
+  };
+
   FakeElement.prototype = {
-    val: function() {
-      if (Array.isArray(this.valuefields)) {
-        return this.valuefields
-          .filter(function(e) {
-            return e.checked;
-          })
-          .map(function(e) {
-            return e.value;
-          });
-      }
-      return this.valuefields.value;
-    },
-
-    hasValue: function() {
-      return this.val().length > 0;
-    },
-
     questionsToSkip: function() {
-      if (this.question.classList.contains('error')) {
-        this.question.classList.remove('error');
+      var questionsList = this.question.classList;
+
+      if (questionsList.contains('error')) {
+        questionsList.remove('error');
 
         if (this.req && !this.hasValue()) {
-          this.question.classList.add('error');
+          questionsList.add('error');
         }
       }
 
@@ -218,25 +196,47 @@ var Survey = function() {
       return [];
     },
 
+    val: function() {
+      if (Array.isArray(this.valuefields)) {
+        return this.valuefields
+          .filter(function(e) {
+            return e.checked;
+          })
+          .map(function(e) {
+            return e.value;
+          });
+      }
+      return this.valuefields.value;
+    },
+
+    hasValue: function() {
+      return this.val().length > 0;
+    },
+
     resetReq: function() {
       this.setReq(this.inititalRequired);
     },
 
     setReq: function(required) {
+      var questionsList = this.question.classList;
       if (!required) {
-        this.question.classList.remove('error');
-        this.question.classList.add('l-not-req');
+        questionsList.remove('error');
+        questionsList.add('l-not-req');
       } else {
-        this.question.classList.remove('l-not-req');
+        questionsList.remove('l-not-req');
       }
 
       this.req = required;
     },
 
     getError: function() {
-      this.question.classList.remove('error');
-      if (!this.req || this.hasValue()) return false;
-      this.question.classList.add('error');
+      var questionsList = this.question.classList;
+      questionsList.remove('error');
+      if (!this.req || this.hasValue()) {
+        return false;
+      }
+
+      questionsList.add('error');
       return true;
     }
   };
@@ -298,8 +298,12 @@ var Survey = function() {
 
     formElement.addEventListener('submit', function(e) {
       e.preventDefault();
-      var elemValues = values(domElements).map(function(k) {return k.val();});
-      var errors = values(domElements).map(function(k) {return k.getError();});
+      var elemValues = values(domElements).map(function(k) {
+        return k.val();
+      });
+      var errors = values(domElements).map(function(k) {
+        return k.getError();
+      });
 
       onSubmit(errors, elemValues);
     });

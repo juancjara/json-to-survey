@@ -287,7 +287,7 @@ var Survey = function() {
 
     mainElement.appendChild(builder.createTitle(schema.title));
 
-    //submitButton array, maybe in the future it can be many buttons
+    //submitButton array, maybe have more buttons in the future
     var formElement = createBody(domElements, schema.body,
                                  [schema.submitButton]);
     mainElement.appendChild(formElement);
